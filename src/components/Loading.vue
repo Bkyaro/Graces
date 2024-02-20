@@ -1,6 +1,6 @@
 <template>
-  <div @click="$emit('test')">
-    <div class="lds-roller" >
+  <div>
+    <div class="lds-roller">
       <div></div>
       <div></div>
       <div></div>
@@ -10,7 +10,7 @@
       <div></div>
       <div></div>
     </div>
-    <div id="loading-text-intro" ><p>Loading</p></div>
+    <div id="loading-text-intro"><p>Loading</p></div>
   </div>
 </template>
 

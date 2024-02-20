@@ -1,9 +1,9 @@
 <template>
   <div id="app">
     <div>
-      <Loading v-if="loading" v-on:test="test" />
+      <Loading v-if="loading" />
 
-      <div class="main-container" v-show="showMainContainer">
+      <div class="main-container">
         <Navigator />
 
         <div class="first">
@@ -95,7 +95,7 @@ export default {
   data() {
     return {
       loading: true,
-      showMainContainer: false, // 控制主容器显示
+      // showMainContainer: false, // 控制主容器显示
       oldMaterial: null,
       secondContainer: false,
       width: 0,
@@ -109,6 +109,11 @@ export default {
       cursor: { x: 0, y: 0 },
       clock: null,
       previousTime: 0,
+      container: null,
+      containerDetails: null,
+      fillLight: null,
+      sunLight: null,
+      customCursor: null,
     };
   },
   components: {
@@ -125,34 +130,18 @@ export default {
     window.removeEventListener("resize", this.resizeHandler);
   },
   methods: {
-    test: function () {
-      console.log("clicked");
-      this.loading = false;
-    },
-    // INTRO CAMERA ANIMATION USING TWEEN
-    introAnimation() {
-      new TWEEN.Tween(this.camera.position.set(0, 4, 2.7))
-        .to({ x: 0, y: 2.4, z: 8.8 }, 3500)
-        .easing(TWEEN.Easing.Quadratic.InOut)
-        .start()
-        .onComplete(function () {
-          TWEEN.remove(this);
-          document.querySelector(".header").classList.add("ended");
-          document.querySelector(".first>p").classList.add("ended");
-        });
-    },
     // 初始化方法，包括加载管理器、渲染器配置、场景创建等
     init() {
       console.log("mounted!");
       // LOADING MANAGER
-      const ftsLoader = document.querySelector(".lds-roller");
       const looadingCover = document.getElementById("loading-text-intro");
-      console.log("ftsLoader", ftsLoader);
+
       console.log("looadingCover", looadingCover);
       const loadingManager = new LoadingManager();
 
       loadingManager.onLoad = () => {
         document.querySelector(".main-container").style.visibility = "visible";
+        document.querySelector(".main-container").style.display = "block";
         document.querySelector("body").style.overflow = "auto";
 
         const yPosition = { y: 0 };
@@ -168,32 +157,29 @@ export default {
             );
           })
           .onComplete(function () {
-            looadingCover.parentNode.removeChild(
-              document.getElementById("loading-text-intro")
-            );
             TWEEN.remove(this);
           });
         this.introAnimation();
-        ftsLoader.parentNode.removeChild(ftsLoader);
+        this.loading = false;
 
         window.scroll(0, 0);
       };
 
       //DRACO LOADER TO LOAD DRACO COMPRESSED MODELS FROM BLENDER
       const dracoLoader = new DRACOLoader();
-      dracoLoader.setDecoderPath("/draco/");
+      dracoLoader.setDecoderPath("/assets/draco/");
       dracoLoader.setDecoderConfig({ type: "js" });
       const loader = new GLTFLoader(loadingManager);
       loader.setDRACOLoader(dracoLoader);
 
       // DIV CONTAINER CREATION TO HOLD THREEJS EXPERIENCE
-      const container = document.getElementById("canvas-container");
-      const containerDetails = document.getElementById(
+      this.container = document.getElementById("canvas-container");
+      this.containerDetails = document.getElementById(
         "canvas-container-details"
       );
 
-      this.width = container.clientWidth;
-      this.height = container.clientHeight;
+      this.width = this.container.clientWidth;
+      this.height = this.container.clientHeight;
 
       this.scene = new Scene();
 
@@ -207,24 +193,24 @@ export default {
       this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1));
       this.renderer.setSize(this.width, this.height);
       this.renderer.outputEncoding = sRGBEncoding;
-      container.appendChild(this.renderer.domElement);
+      this.container.appendChild(this.renderer.domElement);
 
       this.renderer2 = new WebGLRenderer({ antialias: false });
       this.renderer2.setPixelRatio(Math.min(window.devicePixelRatio, 1));
       this.renderer2.setSize(this.width, this.height);
       this.renderer2.outputEncoding = sRGBEncoding;
-      containerDetails.appendChild(this.renderer2.domElement);
+      this.containerDetails.appendChild(this.renderer2.domElement);
 
-      const cameraGroup = new Group();
-      this.scene.add(cameraGroup);
+      this.cameraGroup = new Group();
+      this.scene.add(this.cameraGroup);
 
       this.camera = new PerspectiveCamera(35, this.width / this.height, 1, 100);
       this.camera.position.set(19, 1.54, -0.1);
-      cameraGroup.add(this.camera);
+      this.cameraGroup.add(this.camera);
 
       this.camera2 = new PerspectiveCamera(
         35,
-        containerDetails.clientWidth / containerDetails.clientHeight,
+        this.containerDetails.clientWidth / this.containerDetails.clientHeight,
         1,
         100
       );
@@ -233,19 +219,19 @@ export default {
       this.scene.add(this.camera2);
 
       //Lights
-      const sunLight = new DirectionalLight(0x435c72, 0.08);
-      sunLight.position.set(-100, 0, -100);
-      this.scene.add(sunLight);
+      this.sunLight = new DirectionalLight(0x435c72, 0.08);
+      this.sunLight.position.set(-100, 0, -100);
+      this.scene.add(this.sunLight);
 
-      const fillLight = new PointLight(0x88b2d9, 2.7, 4, 3);
-      fillLight.position.set(30, 3, 1.8);
-      this.scene.add(fillLight);
+      this.fillLight = new PointLight(0x88b2d9, 2.7, 4, 3);
+      this.fillLight.position.set(30, 3, 1.8);
+      this.scene.add(this.fillLight);
 
       // load module
-      loader.load("/graces-draco2.glb", function (gltf) {
+      loader.load("/assets/models/gltf/graces-draco2.glb", (gltf) => {
         gltf.scene.traverse((obj) => {
           if (obj.isMesh) {
-            oldMaterial = obj.material;
+            this.oldMaterial = obj.material;
             obj.material = new MeshPhongMaterial({
               shininess: 45,
             });
@@ -256,12 +242,13 @@ export default {
       });
 
       document.getElementById("aglaea").addEventListener("click", () => {
+        console.log("this", this);
         document.getElementById("aglaea").classList.add("active");
         document.getElementById("euphre").classList.remove("active");
         document.getElementById("thalia").classList.remove("active");
         document.getElementById("content").innerHTML =
           "She was venerated as the goddess of beauty, splendor, glory, magnificence, and adornment. She is the youngest of the Charites according to Hesiod. Aglaea is one of three daughters of Zeus and either the Oceanid Eurynome, or of Eunomia, the goddess of good order and lawful conduct.";
-        animateCamera({ x: 1.9, y: 2.7, z: 2.7 }, { y: 1.1 });
+        this.animateCamera({ x: 1.9, y: 2.7, z: 2.7 }, { y: 1.1 });
       });
 
       document.getElementById("thalia").addEventListener("click", () => {
@@ -270,7 +257,7 @@ export default {
         document.getElementById("euphre").classList.remove("active");
         document.getElementById("content").innerHTML =
           "Thalia, in Greek religion, one of the nine Muses, patron of comedy; also, according to the Greek poet Hesiod, a Grace (one of a group of goddesses of fertility). She is the mother of the Corybantes, celebrants of the Great Mother of the Gods, Cybele, the father being Apollo, a god related to music and dance. In her hands she carried the comic mask and the shepherd’s staff.";
-        animateCamera({ x: -0.9, y: 3.1, z: 2.6 }, { y: -0.1 });
+        this.animateCamera({ x: -0.9, y: 3.1, z: 2.6 }, { y: -0.1 });
       });
 
       document.getElementById("euphre").addEventListener("click", () => {
@@ -279,11 +266,41 @@ export default {
         document.getElementById("thalia").classList.remove("active");
         document.getElementById("content").innerHTML =
           'Euphrosyne is a Goddess of Good Cheer, Joy and Mirth. Her name is the female version of a Greek word euphrosynos, which means "merriment". The Greek poet Pindar states that these goddesses were created to fill the world with pleasant moments and good will. Usually the Charites attended the goddess of beauty Aphrodite.';
-        animateCamera({ x: -0.4, y: 2.7, z: 1.9 }, { y: -0.6 });
+        this.animateCamera({ x: -0.4, y: 2.7, z: 1.9 }, { y: -0.6 });
       });
 
       this.clock = new Clock();
       this.previousTime = 0;
+
+      this.renderLoop();
+
+      document.addEventListener(
+        "mousemove",
+        (event) => {
+          event.preventDefault();
+
+          this.cursor.x = event.clientX / window.innerWidth - 0.5;
+          this.cursor.y = event.clientY / window.innerHeight - 0.5;
+
+          this.handleCursor(event);
+        },
+        false
+      );
+
+      // DISABLE RENDERER BASED ON CONTAINER VIEW
+      const watchedSection = document.querySelector(".second");
+
+      const ob = new IntersectionObserver(this.obCallback, {
+        threshold: 0.05,
+      });
+
+      ob.observe(watchedSection);
+
+      const btn = document.querySelectorAll("nav > .a");
+      this.customCursor = document.querySelector(".cursor");
+
+      btn.forEach((b) => b.addEventListener("mousemove", this.update));
+      btn.forEach((b) => b.addEventListener("mouseleave", this.update));
     },
     // 鼠标移动事件处理
     handleMouseMove(event) {
@@ -291,20 +308,20 @@ export default {
     },
     // 清除场景
     clearScene() {
-      oldMaterial.dispose();
-      renderer.renderLists.dispose();
+      this.oldMaterial.dispose();
+      this.renderer.renderLists.dispose();
     },
 
     // ANIMATE CAMERA
     animateCamera(position, rotation) {
-      new TWEEN.Tween(camera2.position)
+      new TWEEN.Tween(this.camera2.position)
         .to(position, 1800)
         .easing(TWEEN.Easing.Quadratic.InOut)
         .start()
         .onComplete(function () {
           TWEEN.remove(this);
         });
-      new TWEEN.Tween(camera2.rotation)
+      new TWEEN.Tween(this.camera2.rotation)
         .to(rotation, 1800)
         .easing(TWEEN.Easing.Quadratic.InOut)
         .start()
@@ -316,10 +333,10 @@ export default {
     renderLoop() {
       TWEEN.update();
 
-      if (secondContainer) {
-        this.renderer2.render(scene, camera2);
+      if (this.secondContainer) {
+        this.renderer2.render(this.scene, this.camera2);
       } else {
-        this.renderer.render(scene, camera);
+        this.renderer.render(this.scene, this.camera);
       }
 
       const elapsedTime = this.clock.getElapsedTime();
@@ -327,79 +344,68 @@ export default {
       this.previousTime = elapsedTime;
 
       const parallaxY = this.cursor.y;
-      fillLight.position.y -=
-        (parallaxY * 9 + fillLight.position.y - 2) * deltaTime;
+      this.fillLight.position.y -=
+        (parallaxY * 9 + this.fillLight.position.y - 2) * deltaTime;
 
       const parallaxX = this.cursor.x;
-      fillLight.position.x +=
-        (parallaxX * 8 - fillLight.position.x) * 2 * deltaTime;
+      this.fillLight.position.x +=
+        (parallaxX * 8 - this.fillLight.position.x) * 2 * deltaTime;
 
-      cameraGroup.position.z -=
-        (parallaxY / 3 + cameraGroup.position.z) * 2 * deltaTime;
-      cameraGroup.position.x +=
-        (parallaxX / 3 - cameraGroup.position.x) * 2 * deltaTime;
+      this.cameraGroup.position.z -=
+        (parallaxY / 3 + this.cameraGroup.position.z) * 2 * deltaTime;
+      this.cameraGroup.position.x +=
+        (parallaxX / 3 - this.cameraGroup.position.x) * 2 * deltaTime;
 
       requestAnimationFrame(this.renderLoop);
-
-      document.addEventListener(
-        "mousemove",
-        (event) => {
-          event.preventDefault();
-
-          cursor.x = event.clientX / window.innerWidth - 0.5;
-          cursor.y = event.clientY / window.innerHeight - 0.5;
-
-          handleCursor(event);
-        },
-        false
-      );
-
-      // DISABLE RENDERER BASED ON CONTAINER VIEW
-      const watchedSection = document.querySelector(".second");
-
-      const ob = new IntersectionObserver(obCallback, {
-        threshold: 0.05,
-      });
-
-      ob.observe(watchedSection);
-
-      const btn = document.querySelectorAll("nav > .a");
-      const customCursor = document.querySelector(".cursor");
-
-      btn.forEach((b) => b.addEventListener("mousemove", this.update));
-      btn.forEach((b) => b.addEventListener("mouseleave", this.update));
     },
+
     // obCallback
     obCallback(payload) {
       if (payload[0].intersectionRatio > 0.05) {
-        secondContainer = true;
+        this.secondContainer = true;
       } else {
-        secondContainer = false;
+        this.secondContainer = false;
       }
     },
     // 处理游标
     handleCursor(e) {
       const x = e.clientX;
       const y = e.clientY;
-      customCursor.style.cssText = `left: ${x}px; top: ${y}px;`;
+      this.customCursor.style.cssText = `left: ${x}px; top: ${y}px;`;
     },
     // resize
     resizeHandler() {
-      this.camera.aspect = container.clientWidth / container.clientHeight;
+      this.camera.aspect =
+        this.container.clientWidth / this.container.clientHeight;
       this.camera.updateProjectionMatrix();
 
       this.camera2.aspect =
-        containerDetails.clientWidth / containerDetails.clientHeight;
+        this.containerDetails.clientWidth / this.containerDetails.clientHeight;
       this.camera2.updateProjectionMatrix();
 
-      this.renderer.setSize(container.clientWidth, container.clientHeight);
+      this.renderer.setSize(
+        this.container.clientWidth,
+        this.container.clientHeight
+      );
       this.renderer2.setSize(
-        containerDetails.clientWidth,
-        containerDetails.clientHeight
+        this.containerDetails.clientWidth,
+        this.containerDetails.clientHeight
       );
 
       this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1));
       this.renderer2.setPixelRatio(Math.min(window.devicePixelRatio, 1));
+    },
+    // INTRO CAMERA ANIMATION USING TWEEN
+    introAnimation() {
+      new TWEEN.Tween(this.camera.position.set(0, 4, 2.7))
+        .to({ x: 0, y: 2.4, z: 8.8 }, 3500)
+        .easing(TWEEN.Easing.Quadratic.InOut)
+        .start()
+        .onComplete(function () {
+          TWEEN.remove(this);
+          document.querySelector(".header").classList.add("ended");
+          document.querySelector(".first>p").classList.add("ended");
+        });
     },
   },
 };
