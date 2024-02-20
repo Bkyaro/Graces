@@ -3978,10 +3978,10 @@ thread-loader@^3.0.0:
     neo-async "^2.6.2"
     schema-utils "^3.0.0"
 
-three@^0.161.0:
-  version "0.161.0"
-  resolved "https://registry.npmjs.org/three/-/three-0.161.0.tgz"
-  integrity sha512-LC28VFtjbOyEu5b93K0bNRLw1rQlMJ85lilKsYj6dgTu+7i17W+JCCEbvrpmNHF1F3NAUqDSWq50UD7w9H2xQw==
+three@^0.134.0:
+  version "0.134.0"
+  resolved "https://registry.npmjs.org/three/-/three-0.134.0.tgz"
+  integrity sha512-LbBerg7GaSPjYtTOnu41AMp7tV6efUNR3p4Wk5NzkSsNTBuA5mDGOfwwZL1jhhVMLx9V20HolIUo0+U3AXehbg==
 
 thunky@^1.0.2:
   version "1.1.0"
