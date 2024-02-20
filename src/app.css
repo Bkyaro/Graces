@@ -134,6 +134,7 @@ span {
 .cursor {
   pointer-events: none;
   position: fixed;
+  filter: blur(4px);
   top: 10px;
   left: 10px;
   padding: 10px;
